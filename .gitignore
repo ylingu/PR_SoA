@@ -8,4 +8,6 @@ build/
 #vscode
 .vscode/
 
-.cache/
+*.cache/
+
+test/
