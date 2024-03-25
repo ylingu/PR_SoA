@@ -1,18 +1,8 @@
 #include "BayesClassifier.h"
 
-auto calcAccuracy(const std::vector<int> &predict, const std::vector<int> &label) -> double
-{
-    int correct = 0;
-    for (int i = 0; i < predict.size(); i++) {
-        if (predict[i] == label[i]) {
-            correct++;
-        }
-    }
-    return static_cast<double>(correct) / predict.size();
-}
-
 int main()
 {
+    auto start = std::chrono::high_resolution_clock::now();
     std::vector<cv::Mat> trainData, testData;
     std::vector<int> trainLabel, testLabel;
     for (int i = 1; i < 21; ++i) {
@@ -35,6 +25,10 @@ int main()
     BayesClassifier classifier;
     classifier.train(trainData, trainLabel, 20);
     auto predict = classifier.predict(testData);
-    std::cout << "Accuracy: " << calcAccuracy(predict, testLabel) << std::endl;
+    std::cout << "Accuracy: " << BayesClassifier::calcAccuracy(predict, testLabel) << std::endl;
+    auto end = std::chrono::high_resolution_clock::now();
+    std::cout << "Time: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms"
+              << std::endl;
     return 0;
 }

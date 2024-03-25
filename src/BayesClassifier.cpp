@@ -1,6 +1,7 @@
 #include "BayesClassifier.h"
+#include <cmath>
 
-int GLCM::level = 16;
+int GLCM::level = 256;
 int GLCM::d = 1;
 
 auto GLCM::compress(const cv::Mat &img) -> cv::Mat
@@ -75,7 +76,7 @@ auto BayesClassifier::train(const std::vector<cv::Mat> &data, const std::vector<
     int n = data.size();
     auto features = Preprocessing(data);
     Eigen::VectorXd feature;
-    // * Linear standardization
+    // * Linear normalization
     max = features.row(0);
     min = max;
     for (int i = 0; i < n; ++i) {
@@ -96,7 +97,7 @@ auto BayesClassifier::train(const std::vector<cv::Mat> &data, const std::vector<
     //                 .cwiseSqrt();
     // for (int i = 0; i < features.cols(); ++i) {
     //     feature = features.row(i);
-    //     features.row(i) = (feature - meanZscore).cwiseQuotient(6 * stdZscore).array() + 0.5;
+    //     features.row(i) = (feature - meanZscore).cwiseQuotient(stdZscore * 6).array() + 0.5;
     // }
     // * Calculate the mean, covariance, and prior probability of each class
     int featureNum = features.row(0).size();
@@ -120,12 +121,12 @@ auto BayesClassifier::train(const std::vector<cv::Mat> &data, const std::vector<
     prior /= n;
 }
 
-auto BayesClassifier::predict(const std::vector<cv::Mat> &data) -> std::vector<int>
+auto BayesClassifier::predict(const std::vector<cv::Mat> &data) const -> std::vector<int>
 {
     int n = data.size();
     auto features = Preprocessing(data);
     Eigen::VectorXd feature;
-    // * Linear standardization
+    // * Linear normalization
     for (int i = 0; i < n; ++i) {
         feature = features.row(i);
         features.row(i) = (feature - min).cwiseQuotient(max - min);
@@ -133,23 +134,34 @@ auto BayesClassifier::predict(const std::vector<cv::Mat> &data) -> std::vector<i
     // * Z-score standardization
     // for (int i = 0; i < features.cols(); ++i) {
     //     feature = features.row(i);
-    //     features.row(i) = (feature - meanZscore).cwiseQuotient(6 * stdZscore).array() + 0.5;
+    //     features.row(i) = (feature - meanZscore).cwiseQuotient(stdZscore * 6).array() + 0.5;
     // }
     auto res = std::vector<int>();
     for (int i = 0; i < n; ++i) {
         Eigen::VectorXd prob = Eigen::VectorXd::Zero(mean.rows());
         for (int j = 0; j < mean.rows(); ++j) {
-            prob(j) = prior(j)
-                      * (1.0 / pow(2 * M_PI, mean.cols() / 2) / pow(cov.row(j).prod(), 0.5))
-                      * exp(-0.5
-                            * (features.row(i) - mean.row(j))
-                                  .cwiseProduct(cov.row(j).cwiseInverse())
-                                  .cwiseProduct(features.row(i) - mean.row(j))
-                                  .sum());
+            prob(j) = -0.5
+                          * (features.row(i) - mean.row(j))
+                                .cwiseProduct(cov.row(j).cwiseInverse())
+                                .cwiseProduct(features.row(i) - mean.row(j))
+                                .sum()
+                      - 0.5 * log(cov.row(j).prod()) + log(prior(j));
         }
         int maxIndex;
         prob.maxCoeff(&maxIndex);
         res.push_back(maxIndex);
     }
     return res;
+}
+
+auto BayesClassifier::calcAccuracy(const std::vector<int> &predict, const std::vector<int> &label)
+    -> double
+{
+    int correct = 0;
+    for (int i = 0; i < predict.size(); i++) {
+        if (predict[i] == label[i]) {
+            correct++;
+        }
+    }
+    return static_cast<double>(correct) / predict.size();
 }
