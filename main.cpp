@@ -1,6 +1,7 @@
 #include "LinearClassifier.h"
 #include "BayesClassifier.h"
 #include "NonlinearClassifier.h"
+#include <format>
 
 using namespace Eigen;
 using namespace std;
@@ -26,26 +27,21 @@ int main()
     // *使用fisher准则
     // cout << "fisher(X_1, X_2) = " << fisher(X_1, X_2) << endl;
     // *使用kNN分类器
-    kNNClassifier knn(3);
+    kNNClassifier knn(1);
     vector<pair<VectorXd, int>> data;
-    data.push_back(make_pair(Vector2d(1.24, -2.86), 0));
-    data.push_back(make_pair(Vector2d(-6.88, -5.40), 0));
-    data.push_back(make_pair(Vector2d(-2.96, -0.50), 0));
-    data.push_back(make_pair(Vector2d(-4.60, -10.55), 0));
-    data.push_back(make_pair(Vector2d(-4.96, 12.61), 0));
-    data.push_back(make_pair(Vector2d(1.75, 12.26), 0));
-    data.push_back(make_pair(Vector2d(6.27, 5.50), 1));
-    data.push_back(make_pair(Vector2d(17.05, -12.79), 1));
-    data.push_back(make_pair(Vector2d(7.75, -22.68), 1));
-    data.push_back(make_pair(Vector2d(10.80, -5.03), 1));
-    data.push_back(make_pair(Vector2d(15.31, -13.16), 1));
-    data.push_back(make_pair(Vector2d(7.83, 15.70), 1));
-    data.push_back(make_pair(Vector2d(14.63, -0.35), 1));
+    data.push_back(make_pair(Vector2d(2, 2), 0));
+    data.push_back(make_pair(Vector2d(2, 3), 0));
+    data.push_back(make_pair(Vector2d(1, 2), 0));
+    data.push_back(make_pair(Vector2d(2, 1), 0));
+    data.push_back(make_pair(Vector2d(-2, -2), 1));
+    data.push_back(make_pair(Vector2d(-3, -2), 1));
+    data.push_back(make_pair(Vector2d(-1, -2), 1));
+    data.push_back(make_pair(Vector2d(-2, -3), 1));
     knn.fit(data);
     vector<VectorXd> test;
-    test.push_back(VectorXd(2));
-    test[0] << -1, -5;
+    test.push_back(Vector2d(-1, -1));
+    test.push_back(Vector2d(3, 2));
     auto res = knn.predict(test);
-    cout << "knn.predict(test) = " << res[0] << '\n';
+    cout << format("result = {{{}, {}}}", res[0], res[1]) << endl;
     return 0;
 }
