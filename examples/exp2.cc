@@ -40,16 +40,16 @@ int main() {
     }
     SVMClassifier classifier(std::make_unique<LinearNormalization>());
     std::vector<double> c_range, gamma_range;
-    for (double i = 1.5; i < 1.6; i += 0.1) {
+    for (double i = 19; i < 21; i += 0.01) {
         c_range.push_back(i);
     }
-    for (double i = 3.5; i < 3.6; i += 0.1) {
+    for (double i = 4; i < 6; i += 0.01) {
         gamma_range.push_back(i);
     }
     classifier.Train(train_data, train_label, validate_data, validate_label,
                      c_range, gamma_range, 20);
-    auto test_features_64 = classifier.preprocessor_.Preprocessing(test_data);
-    Eigen::MatrixXf test_features = test_features_64.cast<float>();
+    auto test_features64 = classifier.preprocessor_.Preprocessing(test_data);
+    Eigen::MatrixXf test_features = test_features64.cast<float>();
     cv::Mat test_data_mat;
     cv::eigen2cv(test_features, test_data_mat);
     auto predict = classifier.Predict(test_data_mat);

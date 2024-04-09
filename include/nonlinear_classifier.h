@@ -54,7 +54,9 @@ public:
                const std::vector<double> &c_range,
                const std::vector<double> &gamma_range, const int &class_num)
         -> void;
-    auto Predict(const cv::Mat &test_data_mat) const -> std::vector<int>;
+    auto Predict(const cv::Mat &test_data_mat,
+                 const std::optional<cv::Ptr<cv::ml::SVM>> &svm = std::nullopt)
+        -> std::vector<int>;
     auto SaveModel(const std::string &filepath = "model.xml") -> void;
     auto LoadModel(const std::string &filepath = "model.xml") -> void;
 };

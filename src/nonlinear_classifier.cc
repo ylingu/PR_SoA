@@ -2,11 +2,15 @@
 
 #include <Eigen/Dense>
 #include <cmath>
+#include <future>
 #include <memory>
+#include <mutex>
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/opencv.hpp>
+#include <optional>
 #include <vector>
 
+#include "threadpool.h"
 #include "utils.h"
 
 auto KNNClassifier::Fit(
@@ -154,37 +158,47 @@ auto SVMClassifier::Train(const std::vector<cv::Mat> &train_data,
     auto train_label_mat = cv::Mat(train_label, true);
     auto best_param = std::pair<double, double>(0, 0);
     auto best_accuracy = 0.0;
+    ThreadPool pool(std::thread::hardware_concurrency());
+    std::vector<std::future<void>> futures;
+    std::mutex mtx;
     for (auto c : c_range) {
         for (auto gamma : gamma_range) {
-            auto temp = svm_;
-            svm_ = cv::ml::SVM::create();
-            svm_->setType(cv::ml::SVM::C_SVC);
-            svm_->setKernel(cv::ml::SVM::RBF);
-            svm_->setC(c);
-            svm_->setGamma(gamma);
-            svm_->setTermCriteria(cv::TermCriteria(
-                cv::TermCriteria::MAX_ITER + cv::TermCriteria::EPS, kEpochs,
-                kEpsilon));
-            svm_->train(train_data_mat, cv::ml::ROW_SAMPLE, train_label_mat);
-            auto result = Predict(validate_data_mat);
-            auto accuracy = CalcAccuracy(result, validate_label);
-            if (accuracy >= best_accuracy) {
-                best_accuracy = accuracy;
-                best_param = {c, gamma};
-            } else {
-                svm_ = temp;
-            }
+            futures.emplace_back(pool.Enqueue([&, c, gamma]() {
+                cv::Ptr<cv::ml::SVM> temp;
+                temp = cv::ml::SVM::create();
+                temp->setType(cv::ml::SVM::C_SVC);
+                temp->setKernel(cv::ml::SVM::RBF);
+                temp->setC(c);
+                temp->setGamma(gamma);
+                temp->setTermCriteria(cv::TermCriteria(
+                    cv::TermCriteria::MAX_ITER + cv::TermCriteria::EPS, kEpochs,
+                    kEpsilon));
+                temp->train(train_data_mat, cv::ml::ROW_SAMPLE,
+                            train_label_mat);
+                auto result = Predict(validate_data_mat, temp);
+                auto accuracy = CalcAccuracy(result, validate_label);
+                std::lock_guard<std::mutex> lock(mtx);
+                if (accuracy >= best_accuracy) {
+                    best_accuracy = accuracy;
+                    best_param = {c, gamma};
+                    svm_ = temp;
+                }
+            }));
         }
     }
 }
 
-auto SVMClassifier::Predict(const cv::Mat &test_data_mat) const
+auto SVMClassifier::Predict(const cv::Mat &test_data_mat,
+                            const std::optional<cv::Ptr<cv::ml::SVM>> &svm)
     -> std::vector<int> {
     cv::Mat result;
-    svm_->predict(test_data_mat, result);
+    if (svm.has_value()) {
+        svm.value()->predict(test_data_mat, result);
+    } else {
+        svm_->predict(test_data_mat, result);
+    }
     return std::vector<int>(result.begin<float>(), result.end<float>());
 }
-
 auto SVMClassifier::SaveModel(const std::string &filepath) -> void {
     svm_->save(filepath);
 }
