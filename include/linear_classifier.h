@@ -1,71 +1,190 @@
-// 确保头文件只被包含一次
 #ifndef LINEARCLASSIFIER_H
 #define LINEARCLASSIFIER_H
 
 #include <Eigen/Dense>
 
-// 垂直平分线分类器
+/**
+ * @class VerticalBisectorClassifier
+ * @brief A classifier that uses the vertical bisector method.
+ */
 class VerticalBisectorClassifier {
 private:
-    Eigen::VectorXd w_, w_0_;  // 权重向量和偏置
+    Eigen::VectorXd w_;    ///< Weight vector
+    Eigen::VectorXd w_0_;  ///< Bias vector
+
 public:
-    VerticalBisectorClassifier(){};  // 默认构造函数
+    /**
+     * @brief Default constructor
+     */
+    VerticalBisectorClassifier(){};
+
+    /**
+     * @brief Train the model
+     * @param x_1 Samples from the first class
+     * @param x_2 Samples from the second class
+     */
     void Train(const Eigen::MatrixXd &x_1, const Eigen::MatrixXd &x_2);
+
+    /**
+     * @brief Predict the class of a sample
+     * @param x The sample to predict
+     * @return The predicted class
+     */
     double Predict(const Eigen::VectorXd &x);
 };
 
-// 最小距离分类器
+/**
+ * @class MinimumDistanceClassifier
+ * @brief A classifier that uses the minimum distance method.
+ */
 class MinimumDistanceClassifier {
 private:
-    Eigen::VectorXd m_1_, m_2_;  // 两个类别的均值
+    Eigen::VectorXd m_1_;  ///< Mean vector of the first class
+    Eigen::VectorXd m_2_;  ///< Mean vector of the second class
+
 public:
-    MinimumDistanceClassifier(){};  // 默认构造函数
+    /**
+     * @brief Default constructor
+     */
+    MinimumDistanceClassifier(){};
+
+    /**
+     * @brief Train the model
+     * @param x_1 Samples from the first class
+     * @param x_2 Samples from the second class
+     */
     void Train(const Eigen::MatrixXd &x_1, const Eigen::MatrixXd &x_2);
+
+    /**
+     * @brief Predict the class of a sample
+     * @param x The sample to predict
+     * @return The predicted class
+     */
     bool Predict(const Eigen::VectorXd &x);
 };
 
-// Fisher投影准则
+/**
+ * @brief Fisher projection criterion function.
+ * @param x_1 First class samples.
+ * @param x_2 Second class samples.
+ * @return Fisher vector.
+ */
 Eigen::VectorXd Fisher(const Eigen::MatrixXd &x_1, const Eigen::MatrixXd &x_2);
 
-// 准则函数抽象类
+/**
+ * @class Criterion
+ * @brief Abstract class for criterion functions.
+ */
 class Criterion {
 public:
+    /**
+     * @brief Operator overloading for criterion function
+     * @param a The vector to be projected
+     * @param y The matrix of samples
+     * @return The criterion value
+     */
     virtual double operator()(const Eigen::VectorXd &a,
                               const Eigen::MatrixXd &y);
+
+    /**
+     * @brief Operator overloading for criterion function with bias
+     * @param a The vector to be projected
+     * @param y The matrix of samples
+     * @param b The bias vector
+     * @return The criterion value
+     */
     virtual double operator()(const Eigen::VectorXd &a,
                               const Eigen::MatrixXd &y,
                               const Eigen::VectorXd &b);
-    virtual ~Criterion() = default;  // 虚析构函数
+
+    /**
+     * @brief Default destructor
+     */
+    virtual ~Criterion() = default;
 };
 
-// 最小错分样本准则（与默认实现不同的另一种）
+/**
+ * @class MisclassificationCriterion
+ * @brief Criterion function for misclassification.
+ */
 class MisclassificationCriterion : public Criterion {
 public:
+    /**
+     * @brief Operator overloading for misclassification criterion function
+     * @param a The vector to be projected
+     * @param y The matrix of samples
+     * @return The misclassification criterion value
+     */
     double operator()(const Eigen::VectorXd &a,
                       const Eigen::MatrixXd &y) override;
 };
 
-// 最小平方误差准则
+/**
+ * @class LeastSquaresCriterion
+ * @brief Criterion function for least squares.
+ */
 class LeastSquaresCriterion : public Criterion {
 public:
+    /**
+     * @brief Operator overloading for least squares criterion function
+     * @param a The vector to be projected
+     * @param y The matrix of samples
+     * @param b The bias vector
+     * @return The least squares criterion value
+     */
     double operator()(const Eigen::VectorXd &a, const Eigen::MatrixXd &y,
                       const Eigen::VectorXd &b) override;
 };
 
-// 线性分类器
+/**
+ * @class LinearClassifier
+ * @brief A linear classifier.
+ */
 class LinearClassifier {
 private:
-    Eigen::VectorXd a_;  // 权重向量
-    Criterion
-        *c_;  // 准则函数，仅支持感知准则和最小平方误差准则(QAQ不会autograd)
+    Eigen::VectorXd a_;  ///< The vector to be projected
+    Criterion *c_;       ///< The criterion function pointer
+
 public:
-    LinearClassifier(Criterion *c) : c_(c) {}  // 构造函数
+    /**
+     * @brief Constructor that accepts a criterion function pointer
+     * @param c The criterion function pointer
+     */
+    LinearClassifier(Criterion *c) : c_(c) {}
+
+    /**
+     * @brief Get the labels of the samples
+     * @param x_1 Samples from the first class
+     * @param x_2 Samples from the second class
+     * @return The labels of the samples
+     */
     Eigen::MatrixXd get_y(const Eigen::MatrixXd &x_1,
                           const Eigen::MatrixXd &x_2);
+
+    /**
+     * @brief Train the model
+     * @param x_1 Samples from the first class
+     * @param x_2 Samples from the second class
+     * @param learning_rate The learning rate
+     * @param epochs The number of epochs
+     */
     void Train(const Eigen::MatrixXd &x_1, const Eigen::MatrixXd &x_2,
                const double &learning_rate, const int &epochs);
+
+    /**
+     * @brief Train the model with a bias vector
+     * @param x_1 Samples from the first class
+     * @param x_2 Samples from the second class
+     * @param b The bias vector
+     */
     void Train(const Eigen::MatrixXd &x_1, const Eigen::MatrixXd &x_2,
                const Eigen::VectorXd &b);
+
+    /**
+     * @brief Predict the class of a sample
+     * @param x The sample to predict
+     * @return The predicted class
+     */
     double Predict(Eigen::VectorXd x);
 };
 

@@ -149,8 +149,6 @@ auto CSV::InsertColumn(const int column_index,
     }
 }
 
-auto CSV::GetColumnCount() const -> int { return data_[0].size(); }
-
 auto CSV::GetRow(const int row_index) const -> std::vector<std::string> {
     if (row_index < 0 || row_index >= data_.size()) {
         throw std::out_of_range("Row not found");
@@ -192,8 +190,6 @@ auto CSV::InsertRow(const int row_index,
     }
     data_.insert(data_.begin() + row_index, row_data);
 }
-
-auto CSV::GetRowCount() const -> int { return data_.size(); }
 
 auto CSV::GetCell(const int row_index, const int column_index) const
     -> std::string {
