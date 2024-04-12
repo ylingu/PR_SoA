@@ -186,6 +186,9 @@ auto SVMClassifier::Train(const std::vector<cv::Mat> &train_data,
             }));
         }
     }
+    for (auto &future : futures) {
+        future.get();
+    }
 }
 
 auto SVMClassifier::Predict(const cv::Mat &test_data_mat,

@@ -1,4 +1,5 @@
 #include <Eigen/Dense>
+#include <chrono>
 #include <iostream>
 #include <memory>
 #include <opencv2/core/eigen.hpp>
@@ -9,6 +10,7 @@
 #include "utils.h"
 
 int main() {
+    auto start = std::chrono::high_resolution_clock::now();
     std::vector<cv::Mat> train_data, test_data, validate_data;
     std::vector<int> train_label, test_label, validate_label;
     for (int i = 1; i < 21; ++i) {
@@ -55,5 +57,11 @@ int main() {
     auto predict = classifier.Predict(test_data_mat);
     classifier.SaveModel();
     std::cout << "Accuracy: " << CalcAccuracy(predict, test_label) << std::endl;
+    auto end = std::chrono::high_resolution_clock::now();
+    std::cout << "Time: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(end -
+                                                                       start)
+                     .count()
+              << "ms" << std::endl;
     return 0;
 }

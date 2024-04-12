@@ -11,8 +11,7 @@ int GLCM::kD = 1;
 
 auto GLCM::Compress(const cv::Mat &img) -> cv::Mat {
     cv::Mat res = cv::Mat::zeros(img.rows, img.cols, CV_8U);
-    // img.convertTo(res, CV_8U, (level - 1) / 255.0); // Convert the grayscale
-    // levels to level
+    // img.convertTo(res, CV_8U, (kLevel - 1) / 255.0);
     // *双重循环图像压缩，效率较低，但会发生四舍五入某些情况下分类准确率高于直接转换
     for (int i = 0; i < img.rows; i++) {
         for (int j = 0; j < img.cols; j++) {
