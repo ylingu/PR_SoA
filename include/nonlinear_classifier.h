@@ -10,17 +10,17 @@
 #include "utils.h"
 
 /**
- * @struct TreeNode
- * @brief A node in the decision tree.
+ * @struct KNNTreeNode
+ * @brief A node in the k tree.
  * @tparam T The type of data stored in the node.
  */
 template <typename T>
-struct TreeNode {
-    T data;                              ///< The data stored in the node.
-    int split;                           ///< The split criterion.
-    int label;                           ///< The label of the node.
-    std::unique_ptr<TreeNode<T>> left;   ///< The left child node.
-    std::unique_ptr<TreeNode<T>> right;  ///< The right child node.
+struct KNNTreeNode {
+    T data;                                 ///< The data stored in the node.
+    int split;                              ///< The split criterion.
+    int label;                              ///< The label of the node.
+    std::unique_ptr<KNNTreeNode<T>> left;   ///< The left child node.
+    std::unique_ptr<KNNTreeNode<T>> right;  ///< The right child node.
 
     /**
      * @brief Construct a new TreeNode object
@@ -28,7 +28,7 @@ struct TreeNode {
      * @param split The split criterion.
      * @param label The label of the node.
      */
-    TreeNode(T data, int split, int label)
+    KNNTreeNode(T data, int split, int label)
         : data(data),
           split(split),
           label(label),
@@ -65,7 +65,7 @@ public:
 
 private:
     int k_;  ///< The number of neighbors to consider.
-    std::unique_ptr<TreeNode<Eigen::VectorXd>>
+    std::unique_ptr<KNNTreeNode<Eigen::VectorXd>>
         root_;  ///< The root of the decision tree.
 };
 
@@ -128,6 +128,70 @@ public:
      * @param filepath The path to load the model from. Default is "model.xml".
      */
     auto LoadModel(const std::string &filepath = "model.xml") -> void;
+};
+
+/**
+ * @struct DecisionTreeNode
+ * @brief A node in the decision tree.
+ *
+ * Each node contains an attribute to split on, a label, and a map of children
+ * nodes.
+ */
+struct DecisionTreeNode {
+    std::string attribute;  ///< The attribute to split on.
+    std::string label;      ///< The label of the node.
+    std::map<std::string, std::unique_ptr<DecisionTreeNode>>
+        children;  ///< The children of the node.
+
+    /**
+     * @brief Construct a new DecisionTreeNode object.
+     *
+     * @param attribute The attribute to split on.
+     * @param label The label of the node.
+     */
+    DecisionTreeNode(const std::string &attribute, const std::string &label)
+        : attribute(attribute), label(label), children() {}
+};
+
+/**
+ * @class DecisionTree
+ * @brief A decision tree classifier.
+ *
+ * The DecisionTree class is a classifier that uses a decision tree to make
+ * predictions.
+ */
+class DecisionTree {
+private:
+    std::unique_ptr<DecisionTreeNode>
+        root_;  ///< The root of the decision tree.
+
+public:
+    /**
+     * @brief Construct a new DecisionTree object
+     */
+    DecisionTree() : root_(nullptr) {}
+
+    /**
+     * @brief Fit the model to the training data.
+     * @param train_data The training data.
+     */
+    auto Build(std::string csv_filepath) -> void;
+
+    /**
+     * @brief Predict the labels of the test data.
+     * @param test_data The test data.
+     * @return The predicted labels.
+     */
+    auto Predict(const CSV &test_data) const -> std::vector<std::string>;
+
+private:
+    /**
+     * @brief Calculate the entropy of a set of labels.
+     *
+     * @param labels The labels.
+     * @return The entropy.
+     */
+    static auto CalcEntropy(const std::vector<std::string> &labels) -> double;
 };
 
 #endif  // NONLINEAR_CLASSIFIER_H

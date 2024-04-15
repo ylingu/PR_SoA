@@ -15,16 +15,16 @@ int main() {
         int j = 1;
         for (; j < 17; ++j) {
             auto img =
-                cv::imread("../../../../examples/imgs/s" + std::to_string(i) +
-                               "/" + std::to_string(j) + ".bmp",
+                cv::imread("../../../../data/imgs/s" + std::to_string(i) + "/" +
+                               std::to_string(j) + ".bmp",
                            cv::IMREAD_GRAYSCALE);
             train_data.push_back(img);
             train_label.push_back(i - 1);
         }
         for (; j < 21; ++j) {
             auto img =
-                cv::imread("../../../../examples/imgs/s" + std::to_string(i) +
-                               "/" + std::to_string(j) + ".bmp",
+                cv::imread("../../../../data/imgs/s" + std::to_string(i) + "/" +
+                               std::to_string(j) + ".bmp",
                            cv::IMREAD_GRAYSCALE);
             test_data.push_back(img);
             test_label.push_back(i - 1);

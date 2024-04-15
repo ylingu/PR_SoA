@@ -88,7 +88,7 @@ auto CSV::GetColumn(const int column_index) const -> std::vector<std::string> {
         throw std::out_of_range("Column not found");
     }
     std::vector<std::string> column;
-    for (auto it = data_.begin(); it != data_.end(); it++) {
+    for (auto it = data_.begin() + has_header_; it != data_.end(); it++) {
         column.push_back((*it)[column_index]);
     }
     return column;
@@ -150,56 +150,50 @@ auto CSV::InsertColumn(const int column_index,
 }
 
 auto CSV::GetRow(const int row_index) const -> std::vector<std::string> {
-    if (row_index < 0 || row_index >= data_.size()) {
+    if (row_index < 0 || row_index >= GetRowCount()) {
         throw std::out_of_range("Row not found");
     }
-    return data_[row_index];
+    return data_[row_index + has_header_];
 }
 
 auto CSV::SetRow(const int row_index, const std::vector<std::string> &row_data)
     -> void {
-    if (row_index < 0 || row_index >= data_.size()) {
+    if (row_index < 0 || row_index >= GetRowCount()) {
         throw std::out_of_range("Row not found");
     }
     if (row_data.size() != data_[0].size()) {
         throw std::invalid_argument("Data size not match");
     }
-    data_[row_index] = row_data;
+    data_[row_index + has_header_] = row_data;
 }
 
 auto CSV::RemoveRow(const int row_index) -> void {
-    if (row_index < 0 || row_index >= data_.size()) {
+    if (row_index < 0 || row_index >= GetRowCount()) {
         throw std::out_of_range("Row not found");
     }
-    if (has_header_ && row_index == 0) {
-        throw std::invalid_argument("Cannot remove header");
-    }
-    data_.erase(data_.begin() + row_index);
+    data_.erase(data_.begin() + row_index + has_header_);
 }
 
 auto CSV::InsertRow(const int row_index,
                     const std::vector<std::string> &row_data) -> void {
-    if (row_index < 0 || row_index > data_.size()) {
+    if (row_index < 0 || row_index > GetRowCount()) {
         throw std::out_of_range("Row not found");
     }
     if (row_data.size() != data_[0].size()) {
         throw std::invalid_argument("Data size not match");
     }
-    if (has_header_ && row_index == 0) {
-        throw std::invalid_argument("Cannot insert header");
-    }
-    data_.insert(data_.begin() + row_index, row_data);
+    data_.insert(data_.begin() + row_index + has_header_, row_data);
 }
 
 auto CSV::GetCell(const int row_index, const int column_index) const
     -> std::string {
-    if (row_index < 0 || row_index >= data_.size()) {
+    if (row_index < 0 || row_index >= GetRowCount()) {
         throw std::out_of_range("Row not found");
     }
     if (column_index < 0 || column_index >= data_[0].size()) {
         throw std::out_of_range("Column not found");
     }
-    return data_[row_index][column_index];
+    return data_[row_index + has_header_][column_index];
 }
 
 auto CSV::GetCell(const int row_index, const std::string &column_name) const
@@ -210,16 +204,13 @@ auto CSV::GetCell(const int row_index, const std::string &column_name) const
 
 auto CSV::SetCell(const int row_index, const int column_index,
                   const std::string &cell_data) -> void {
-    if (row_index < 0 || row_index >= data_.size()) {
+    if (row_index < 0 || row_index >= GetRowCount()) {
         throw std::out_of_range("Row not found");
     }
     if (column_index < 0 || column_index >= data_[0].size()) {
         throw std::out_of_range("Column not found");
     }
-    data_[row_index][column_index] = cell_data;
-    if (has_header_ && row_index == 0) {
-        UpdateColumnNames();
-    }
+    data_[row_index + has_header_][column_index] = cell_data;
 }
 
 auto CSV::SetCell(const int row_index, const std::string &column_name,

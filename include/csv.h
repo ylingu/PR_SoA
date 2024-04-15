@@ -44,6 +44,22 @@ public:
     }
 
     /**
+     * @brief Constructs a new CSV object.
+     *
+     * @param raw_data A 2D vector of strings representing the raw data to be
+     * stored in the CSV object.
+     * @param has_header A boolean indicating whether the first row of raw_data
+     * is a header row. Default is true.
+     */
+    CSV(const std::vector<std::vector<std::string>> &raw_data,
+        bool has_header = true)
+        : has_header_(has_header), data_(raw_data) {
+        if (has_header_) {
+            UpdateColumnNames();
+        }
+    }
+
+    /**
      * @brief Read Document data from file.
      *
      * @param filepath specifies the path of an existing CSV-file
@@ -148,6 +164,17 @@ public:
     auto GetRow(const int row_index) const -> std::vector<std::string>;
 
     /**
+     * @brief Overloads the [] operator to access a row in the CSV file.
+     *
+     * @param row_index The index of the row to access.
+     * @return A vector of strings representing the row at the given index.
+     */
+    inline auto operator[](const int row_index) const
+        -> std::vector<std::string> {
+        return GetRow(row_index);
+    }
+
+    /**
      * @brief Sets a row by index.
      *
      * @param row_index The index of the row.
@@ -177,7 +204,9 @@ public:
      *
      * @return The number of rows in the CSV file.
      */
-    inline auto GetRowCount() const -> int { return data_.size(); }
+    inline auto GetRowCount() const -> int {
+        return data_.size() - has_header_;
+    }
 
     /**
      * @brief Gets a cell by row and column index.
