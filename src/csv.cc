@@ -156,8 +156,8 @@ auto CSV::GetRow(const int row_index) const -> std::vector<std::string> {
     return data_[row_index + has_header_];
 }
 
-auto CSV::SetRow(const int row_index, const std::vector<std::string> &row_data)
-    -> void {
+auto CSV::SetRow(const int row_index,
+                 const std::vector<std::string> &row_data) -> void {
     if (row_index < 0 || row_index >= GetRowCount()) {
         throw std::out_of_range("Row not found");
     }
@@ -185,8 +185,8 @@ auto CSV::InsertRow(const int row_index,
     data_.insert(data_.begin() + row_index + has_header_, row_data);
 }
 
-auto CSV::GetCell(const int row_index, const int column_index) const
-    -> std::string {
+auto CSV::GetCell(const int row_index,
+                  const int column_index) const -> std::string {
     if (row_index < 0 || row_index >= GetRowCount()) {
         throw std::out_of_range("Row not found");
     }
@@ -196,13 +196,14 @@ auto CSV::GetCell(const int row_index, const int column_index) const
     return data_[row_index + has_header_][column_index];
 }
 
-auto CSV::GetCell(const int row_index, const std::string &column_name) const
-    -> std::string {
+auto CSV::GetCell(const int row_index,
+                  const std::string &column_name) const -> std::string {
     auto index = GetColumnIndex(column_name);
     return GetCell(row_index, index);
 }
 
-auto CSV::SetCell(const int row_index, const int column_index,
+auto CSV::SetCell(const int row_index,
+                  const int column_index,
                   const std::string &cell_data) -> void {
     if (row_index < 0 || row_index >= GetRowCount()) {
         throw std::out_of_range("Row not found");
@@ -213,7 +214,8 @@ auto CSV::SetCell(const int row_index, const int column_index,
     data_[row_index + has_header_][column_index] = cell_data;
 }
 
-auto CSV::SetCell(const int row_index, const std::string &column_name,
+auto CSV::SetCell(const int row_index,
+                  const std::string &column_name,
                   const std::string &cell_data) -> void {
     auto index = GetColumnIndex(column_name);
     SetCell(row_index, index, cell_data);

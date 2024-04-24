@@ -3,10 +3,12 @@
 
 #include <Eigen/Dense>
 #include <memory>
+#include <opencv2/core/eigen.hpp>
 #include <opencv2/opencv.hpp>
 #include <vector>
 
 #include "csv.h"
+#include "feature_extraction.h"
 #include "utils.h"
 
 /**
@@ -75,19 +77,63 @@ private:
  */
 class SVMClassifier {
 private:
+    int class_num_;             ///< The number of classes.
     cv::Ptr<cv::ml::SVM> svm_;  ///< The SVM model.
     static int kEpochs;         ///< The number of training epochs.
     static double kEpsilon;     ///< The tolerance for stopping criterion.
+    std::unique_ptr<Normalization>
+        normalize_strategy_;  ///< Strategy for data normalization.
+    std::unique_ptr<FeatureExtraction>
+        feature_extractor_;  ///< Strategy for feature extraction.
 
 public:
-    Preprocess preprocessor_;  ///< The preprocessing strategy.
+    /**
+     * @brief Constructs a SVMClassifier with optional normalization and
+     * feature extraction strategies.
+     *
+     * This constructor initializes a SVMClassifier with customizable
+     * normalization and feature extraction strategies. If not provided, the
+     * feature extraction strategy defaults to GLCMFeatureExtraction.
+     *
+     * @param class_num The number of classes in the data.
+     * @param normalize_strategy_ Unique pointer to a Normalization strategy
+     * object (default is nullptr).
+     * @param feature_extractor Unique pointer to a FeatureExtraction strategy
+     * object (default is GLCMFeatureExtraction).
+     */
+    SVMClassifier(const int class_num,
+                  std::unique_ptr<Normalization> normalize_strategy_ = nullptr,
+                  std::unique_ptr<FeatureExtraction> feature_extractor =
+                      std::make_unique<GLCMFeatureExtraction>())
+        : class_num_(class_num),
+          normalize_strategy_(std::move(normalize_strategy_)),
+          feature_extractor_(std::move(feature_extractor)) {}
 
     /**
-     * @brief Construct a new SVMClassifier object
-     * @param strategy The normalization strategy.
+     * @brief Preprocesses the input data.
+     *
+     * This function takes a vector of images as input and applies preprocessing
+     * steps to prepare the data for classification. The preprocessing steps can
+     * include normalization, feature extraction, and dimensionality reduction,
+     * depending on the implementation. The preprocessed data is returned as an
+     * Eigen::MatrixXd, where each row represents the feature vector of an
+     * image.
+     *
+     * @param data A std::vector of cv::Mat objects representing the input
+     * images.
+     * @return An Eigen::MatrixXd where each row is the feature vector of the
+     * corresponding input image.
      */
-    SVMClassifier(std::unique_ptr<Normalization> strategy)
-        : preprocessor_(std::move(strategy)) {}
+    inline auto Preprocess(const std::vector<cv::Mat> &data) -> cv::Mat {
+        auto features = feature_extractor_->BatchExtract(data);
+        if (normalize_strategy_ != nullptr) {
+            features = normalize_strategy_->Normalize(features);
+        }
+        Eigen::MatrixXf temp = features.cast<float>();
+        cv::Mat features_mat;
+        cv::eigen2cv(temp, features_mat);
+        return features_mat;
+    }
 
     /**
      * @brief Train the model.
@@ -97,15 +143,13 @@ public:
      * @param validate_label The labels of the validation data.
      * @param c_range The range of the C parameter.
      * @param gamma_range The range of the gamma parameter.
-     * @param class_num The number of classes.
      */
-    auto Train(const std::vector<cv::Mat> &train_data,
+    auto Train(const cv::Mat &train_data,
                const std::vector<int> &train_label,
-               const std::vector<cv::Mat> &validate_data,
+               const cv::Mat &validate_data,
                const std::vector<int> &validate_label,
                const std::vector<double> &c_range,
-               const std::vector<double> &gamma_range, const int &class_num)
-        -> void;
+               const std::vector<double> &gamma_range) -> void;
 
     /**
      * @brief Predict the labels of the test data.
@@ -121,13 +165,17 @@ public:
      * @brief Save the trained model.
      * @param filepath The path to save the model. Default is "model.xml".
      */
-    auto SaveModel(const std::string &filepath = "model.xml") -> void;
+    inline auto SaveModel(const std::string &filepath = "model.xml") -> void {
+        svm_->save(filepath);
+    }
 
     /**
      * @brief Load a trained model.
      * @param filepath The path to load the model from. Default is "model.xml".
      */
-    auto LoadModel(const std::string &filepath = "model.xml") -> void;
+    inline auto LoadModel(const std::string &filepath = "model.xml") -> void {
+        svm_ = cv::ml::SVM::load(filepath);
+    }
 };
 
 /**

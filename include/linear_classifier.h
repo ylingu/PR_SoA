@@ -132,7 +132,8 @@ public:
      * @param b The bias vector
      * @return The least squares criterion value
      */
-    double operator()(const Eigen::VectorXd &a, const Eigen::MatrixXd &y,
+    double operator()(const Eigen::VectorXd &a,
+                      const Eigen::MatrixXd &y,
                       const Eigen::VectorXd &b) override;
 };
 
@@ -168,8 +169,10 @@ public:
      * @param learning_rate The learning rate
      * @param epochs The number of epochs
      */
-    void Train(const Eigen::MatrixXd &x_1, const Eigen::MatrixXd &x_2,
-               const double &learning_rate, const int &epochs);
+    void Train(const Eigen::MatrixXd &x_1,
+               const Eigen::MatrixXd &x_2,
+               const double &learning_rate,
+               const int &epochs);
 
     /**
      * @brief Train the model with a bias vector
@@ -177,7 +180,8 @@ public:
      * @param x_2 Samples from the second class
      * @param b The bias vector
      */
-    void Train(const Eigen::MatrixXd &x_1, const Eigen::MatrixXd &x_2,
+    void Train(const Eigen::MatrixXd &x_1,
+               const Eigen::MatrixXd &x_2,
                const Eigen::VectorXd &b);
 
     /**

@@ -2,42 +2,8 @@
 #define UTILS_H
 
 #include <Eigen/Dense>
-#include <memory>
 #include <opencv2/opencv.hpp>
 #include <vector>
-
-/**
- * @class GLCM
- * @brief Grey Level Co-occurrence Matrix (GLCM) feature extraction.
- */
-class GLCM {
-private:
-    static int kLevel;  // Number of grey levels
-    static int kD;      // Distance
-public:
-    /**
-     * @brief Compress the image.
-     * @param img The image to compress.
-     * @return The compressed image.
-     */
-    static auto Compress(const cv::Mat &img) -> cv::Mat;
-
-    /**
-     * @brief Get the GLCM of the image.
-     * @param img The image.
-     * @param angle The angle.
-     * @return The GLCM.
-     */
-    static auto GetGLCM(const cv::Mat &img, const double &angle)
-        -> Eigen::MatrixXd;
-
-    /**
-     * @brief Get the GLCM features.
-     * @param glcm The GLCM.
-     * @return The GLCM features.
-     */
-    static auto GetFeature(const Eigen::MatrixXd &glcm) -> Eigen::VectorXd;
-};
 
 /**
  * @class Normalization
@@ -94,31 +60,6 @@ public:
      * @return The normalized features.
      */
     auto Normalize(const Eigen::MatrixXd &features) -> Eigen::MatrixXd override;
-};
-
-/**
- * @class Preprocess
- * @brief Preprocessing class.
- */
-class Preprocess {
-private:
-    static std::vector<double> kAngles;        // Angles
-    std::unique_ptr<Normalization> strategy_;  // Normalization strategy
-public:
-    /**
-     * @brief Construct a new Preprocess object.
-     * @param strategy The normalization strategy.
-     */
-    Preprocess(std::unique_ptr<Normalization> strategy)
-        : strategy_(std::move(strategy)) {}
-
-    /**
-     * @brief Preprocess the data.
-     * @param data The data to preprocess.
-     * @return The preprocessed data.
-     */
-    auto Preprocessing(const std::vector<cv::Mat> &data) const
-        -> Eigen::MatrixXd;
 };
 
 /**

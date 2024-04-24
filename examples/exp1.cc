@@ -7,9 +7,10 @@
 
 #include "bayes_classifier.h"
 #include "utils.h"
+
 int main() {
     auto start = std::chrono::high_resolution_clock::now();
-    std::vector<cv::Mat> train_data, test_data;
+    std::vector<cv::Mat> train_imgs, test_imgs;
     std::vector<int> train_label, test_label;
     for (int i = 1; i < 21; ++i) {
         int j = 1;
@@ -18,7 +19,7 @@ int main() {
                 cv::imread("../../../../data/imgs/s" + std::to_string(i) + "/" +
                                std::to_string(j) + ".bmp",
                            cv::IMREAD_GRAYSCALE);
-            train_data.push_back(img);
+            train_imgs.push_back(img);
             train_label.push_back(i - 1);
         }
         for (; j < 21; ++j) {
@@ -26,12 +27,14 @@ int main() {
                 cv::imread("../../../../data/imgs/s" + std::to_string(i) + "/" +
                                std::to_string(j) + ".bmp",
                            cv::IMREAD_GRAYSCALE);
-            test_data.push_back(img);
+            test_imgs.push_back(img);
             test_label.push_back(i - 1);
         }
     }
-    BayesClassifier classifier(std::make_unique<LinearNormalization>());
-    classifier.Train(train_data, train_label, 20);
+    BayesClassifier classifier(20, std::make_unique<LinearNormalization>());
+    auto train_data = classifier.Preprocess(train_imgs),
+         test_data = classifier.Preprocess(test_imgs);
+    classifier.Train(train_data, train_label);
     auto predict = classifier.Predict(test_data);
     std::cout << "Accuracy: " << CalcAccuracy(predict, test_label) << std::endl;
     auto end = std::chrono::high_resolution_clock::now();

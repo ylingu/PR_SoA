@@ -6,7 +6,6 @@
 #include <future>
 #include <memory>
 #include <mutex>
-#include <opencv2/core/eigen.hpp>
 #include <opencv2/opencv.hpp>
 #include <optional>
 #include <utility>
@@ -49,7 +48,8 @@ auto KNNClassifier::Fit(
             // 寻找中位数
             auto sorted_data = data;
             int mid = sorted_data.size() / 2;
-            std::sort(sorted_data.begin(), sorted_data.end(),
+            std::sort(sorted_data.begin(),
+                      sorted_data.end(),
                       [split](const std::pair<Eigen::VectorXd, int> &a,
                               const std::pair<Eigen::VectorXd, int> &b) {
                           return a.first(split) < b.first(split);
@@ -61,8 +61,8 @@ auto KNNClassifier::Fit(
             std::vector<std::pair<Eigen::VectorXd, int>> right_data(
                 sorted_data.begin() + mid + 1, sorted_data.end());
             build(current->left, left_data, (split + 1) % data[0].first.size());
-            build(current->right, right_data,
-                  (split + 1) % data[0].first.size());
+            build(
+                current->right, right_data, (split + 1) % data[0].first.size());
         };
     build(root_, train_data, split);
 }
@@ -73,26 +73,31 @@ auto KNNClassifier::Predict(const std::vector<Eigen::VectorXd> &test_data) const
     // 递归搜索kd树
     std::function<void(const std::unique_ptr<KNNTreeNode<Eigen::VectorXd>> &,
                        const Eigen::VectorXd &,
-                       std::vector<std::pair<double, int>> &, int)>
+                       std::vector<std::pair<double, int>> &,
+                       int)>
         search =
             [&](const std::unique_ptr<KNNTreeNode<Eigen::VectorXd>> &current,
                 const Eigen::VectorXd &data,
-                std::vector<std::pair<double, int>> &heap, int k) {
+                std::vector<std::pair<double, int>> &heap,
+                int k) {
                 if (current == nullptr) {
                     return;
                 }
                 auto dist = (current->data - data).norm();
                 if (heap.size() < k) {
                     heap.push_back({dist, current->label});
-                    std::push_heap(heap.begin(), heap.end(),
+                    std::push_heap(heap.begin(),
+                                   heap.end(),
                                    std::greater<std::pair<double, int>>());
                 } else {
                     if (dist < heap.front().first) {
-                        std::pop_heap(heap.begin(), heap.end(),
+                        std::pop_heap(heap.begin(),
+                                      heap.end(),
                                       std::greater<std::pair<double, int>>());
                         heap.pop_back();
                         heap.push_back({dist, current->label});
-                        std::push_heap(heap.begin(), heap.end(),
+                        std::push_heap(heap.begin(),
+                                       heap.end(),
                                        std::greater<std::pair<double, int>>());
                     }
                 }
@@ -137,20 +142,12 @@ auto KNNClassifier::Predict(const std::vector<Eigen::VectorXd> &test_data) const
 int SVMClassifier::kEpochs = 1000;
 double SVMClassifier::kEpsilon = 0.0001;
 
-auto SVMClassifier::Train(const std::vector<cv::Mat> &train_data,
+auto SVMClassifier::Train(const cv::Mat &train_data,
                           const std::vector<int> &train_label,
-                          const std::vector<cv::Mat> &validate_data,
+                          const cv::Mat &validate_data,
                           const std::vector<int> &validate_label,
                           const std::vector<double> &c_range,
-                          const std::vector<double> &gamma_range,
-                          const int &class_num) -> void {
-    auto train_features64 = preprocessor_.Preprocessing(train_data),
-         validate_features64 = preprocessor_.Preprocessing(validate_data);
-    Eigen::MatrixXf train_features = train_features64.cast<float>(),
-                    validate_features = validate_features64.cast<float>();
-    cv::Mat train_data_mat, validate_data_mat;
-    cv::eigen2cv(train_features, train_data_mat);
-    cv::eigen2cv(validate_features, validate_data_mat);
+                          const std::vector<double> &gamma_range) -> void {
     auto train_label_mat = cv::Mat(train_label, true);
     auto best_param = std::pair<double, double>(0, 0);
     auto best_accuracy = 0.0;
@@ -167,11 +164,11 @@ auto SVMClassifier::Train(const std::vector<cv::Mat> &train_data,
                 temp->setC(c);
                 temp->setGamma(gamma);
                 temp->setTermCriteria(cv::TermCriteria(
-                    cv::TermCriteria::MAX_ITER + cv::TermCriteria::EPS, kEpochs,
+                    cv::TermCriteria::MAX_ITER + cv::TermCriteria::EPS,
+                    kEpochs,
                     kEpsilon));
-                temp->train(train_data_mat, cv::ml::ROW_SAMPLE,
-                            train_label_mat);
-                auto result = Predict(validate_data_mat, temp);
+                temp->train(train_data, cv::ml::ROW_SAMPLE, train_label_mat);
+                auto result = Predict(validate_data, temp);
                 auto accuracy = CalcAccuracy(result, validate_label);
                 std::lock_guard<std::mutex> lock(mtx);
                 if (accuracy >= best_accuracy) {
@@ -197,13 +194,6 @@ auto SVMClassifier::Predict(const cv::Mat &test_data_mat,
         svm_->predict(test_data_mat, result);
     }
     return std::vector<int>(result.begin<float>(), result.end<float>());
-}
-auto SVMClassifier::SaveModel(const std::string &filepath) -> void {
-    svm_->save(filepath);
-}
-
-auto SVMClassifier::LoadModel(const std::string &filepath) -> void {
-    svm_ = cv::ml::SVM::load(filepath);
 }
 
 auto DecisionTree::CalcEntropy(const std::vector<std::string> &labels)
@@ -311,7 +301,8 @@ auto DecisionTree::Build(std::string csv_filepath) -> void {
 auto DecisionTree::Predict(const CSV &test_data) const
     -> std::vector<std::string> {
     std::vector<std::string> result;
-    std::function<void(const CSV &, std::vector<std::string> &,
+    std::function<void(const CSV &,
+                       std::vector<std::string> &,
                        const std::unique_ptr<DecisionTreeNode> &)>
         PredictTree = [&](const CSV &test_data,
                           std::vector<std::string> &result,

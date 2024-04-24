@@ -180,8 +180,8 @@ public:
      * @param row_index The index of the row.
      * @param row_data The new data for the row.
      */
-    auto SetRow(const int row_index, const std::vector<std::string> &row_data)
-        -> void;
+    auto SetRow(const int row_index,
+                const std::vector<std::string> &row_data) -> void;
 
     /**
      * @brief Removes a row by index.
@@ -215,8 +215,8 @@ public:
      * @param column_index The index of the column.
      * @return The cell data.
      */
-    auto GetCell(const int row_index, const int column_index) const
-        -> std::string;
+    auto GetCell(const int row_index,
+                 const int column_index) const -> std::string;
 
     /**
      * @brief Gets a cell by row index and column name.
@@ -225,8 +225,8 @@ public:
      * @param column_name The name of the column.
      * @return The cell data.
      */
-    auto GetCell(const int row_index, const std::string &column_name) const
-        -> std::string;
+    auto GetCell(const int row_index,
+                 const std::string &column_name) const -> std::string;
 
     /**
      * @brief Sets a cell by row and column index.
@@ -235,7 +235,8 @@ public:
      * @param column_index The index of the column.
      * @param cell_data The new data for the cell.
      */
-    auto SetCell(const int row_index, const int column_index,
+    auto SetCell(const int row_index,
+                 const int column_index,
                  const std::string &cell_data) -> void;
 
     /**
@@ -245,7 +246,8 @@ public:
      * @param column_name The name of the column.
      * @param cell_data The new data for the cell.
      */
-    auto SetCell(const int row_index, const std::string &column_name,
+    auto SetCell(const int row_index,
+                 const std::string &column_name,
                  const std::string &cell_data) -> void;
 
     /**

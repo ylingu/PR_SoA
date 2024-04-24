@@ -50,7 +50,8 @@ double Criterion::operator()(const Eigen::VectorXd &a,
     return (-y * a).cwiseMax(0).sum();
 }
 // 默认实现，使用一种最小错分样本准则
-double Criterion::operator()(const Eigen::VectorXd &a, const Eigen::MatrixXd &y,
+double Criterion::operator()(const Eigen::VectorXd &a,
+                             const Eigen::MatrixXd &y,
                              const Eigen::VectorXd &b) {
     Eigen::VectorXd x = (y * a - b) - (y * a - b).cwiseAbs();
     return x.squaredNorm();
@@ -105,7 +106,8 @@ void LinearClassifier::Train(const Eigen::MatrixXd &x_1,
 
 void LinearClassifier::Train(const Eigen::MatrixXd &x_1,
                              const Eigen::MatrixXd &x_2,
-                             const double &learning_rate, const int &epochs) {
+                             const double &learning_rate,
+                             const int &epochs) {
     Eigen::MatrixXd y = get_y(x_1, x_2);
     a_ = Eigen::VectorXd::Zero(y.cols());
     for (int i = 0; i < epochs; i++) {
