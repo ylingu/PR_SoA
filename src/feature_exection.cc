@@ -1,6 +1,7 @@
 #include <opencv2/core/hal/interface.h>
 
 #include <opencv2/core.hpp>
+#include <opencv2/core/base.hpp>
 #include <opencv2/opencv.hpp>
 
 #include "feature_extraction.h"
@@ -107,6 +108,69 @@ auto GaborFeatureExtraction::BatchExtract(const std::vector<cv::Mat> &data)
     }
     Eigen::MatrixXd features =
         Eigen::MatrixXd::Zero(data.size(), kernels_.size() * 4);
+    for (auto it = data.begin(); it != data.end(); it++) {
+        auto img = Compress(*it);
+        auto feature = Extract(img);
+        features.row(std::distance(data.begin(), it)) = feature;
+    }
+    return features;
+}
+
+auto HOGFeatureExtraction::Extract(const cv::Mat &img) -> Eigen::VectorXd {
+    std::vector<float> descriptors;
+    hog_.compute(img, descriptors);
+    Eigen::Map<Eigen::VectorXf> ret(descriptors.data(), descriptors.size());
+    return ret.cast<double>();
+}
+
+auto HOGFeatureExtraction::BatchExtract(const std::vector<cv::Mat> &data)
+    -> Eigen::MatrixXd {
+    Eigen::MatrixXd features;
+    for (auto it = data.begin(); it != data.end(); it++) {
+        auto img = Compress(*it);
+        auto feature = Extract(img);
+        if (features.size() == 0) {
+            features = Eigen::MatrixXd::Zero(data.size(), feature.size());
+        }
+        features.row(std::distance(data.begin(), it)) = feature;
+    }
+    return features;
+}
+
+auto LBPFeatureExtraction::Extract(const cv::Mat &img) -> Eigen::VectorXd {
+    CV_Assert(img.channels() == 1);
+    cv::Mat dest = cv::Mat::zeros(img.size(), CV_8U);
+    for (int i = 0; i != img.rows; ++i) {
+        for (int j = 0; j != img.cols; ++j) {
+            if (i < radius_ || i >= img.rows - radius_ || j < radius_ ||
+                j >= img.cols - radius_) {
+                continue;
+            }
+            double center = img.at<uchar>(i, j);
+            unsigned char code = 0;
+            for (int p = 0; p != neighbors_; ++p) {
+                double theta = 2 * CV_PI * p / neighbors_;
+                double x = j + radius_ * cos(theta),
+                       y = i - radius_ * sin(theta);
+                double val = BilinearInterpolation(img, x, y);
+                code |= (val > center) << p;
+            }
+            dest.at<uchar>(i, j) = code;
+        }
+    }
+    cv::Mat hist;
+    int hist_size = pow(2, neighbors_);
+    float range[] = {0, static_cast<float>(hist_size)};
+    const float *hist_range[] = {range};
+    cv::calcHist(&dest, 1, 0, cv::Mat(), hist, 1, &hist_size, hist_range);
+    hist /= dest.total();
+    Eigen::Map<Eigen::VectorXf> feature(hist.ptr<float>(), hist_size);
+    return feature.cast<double>();
+}
+
+auto LBPFeatureExtraction::BatchExtract(const std::vector<cv::Mat> &data)
+    -> Eigen::MatrixXd {
+    Eigen::MatrixXd features(data.size(), static_cast<int>(pow(2, neighbors_)));
     for (auto it = data.begin(); it != data.end(); it++) {
         auto img = Compress(*it);
         auto feature = Extract(img);

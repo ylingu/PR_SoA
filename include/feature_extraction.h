@@ -115,6 +115,15 @@ public:
         -> Eigen::MatrixXd override;
 };
 
+
+/**
+ * @class GaborFeatureExtraction
+ * @brief Class for Gabor feature extraction
+ *
+ * This class inherits from FeatureExtraction and implements Gabor feature
+ * extraction. Gabor features are particularly useful for texture analysis,
+ * especially in the fields of image processing and computer vision.
+ */
 class GaborFeatureExtraction : public FeatureExtraction {
 private:
     std::vector<cv::Mat> kernels_;  ///< Gabor kernels.
@@ -217,4 +226,160 @@ public:
         -> Eigen::MatrixXd override;
 };
 
+/**
+ * @class HOGFeatureExtraction
+ * @brief Class for Histogram of Oriented Gradients (HOG) feature extraction.
+ *
+ * This class inherits from the FeatureExtraction base class and implements
+ * the extraction of Histogram of Oriented Gradients (HOG) features, which are
+ * widely used in image processing and computer vision, particularly for object
+ * detection tasks.
+ */
+class HOGFeatureExtraction : public FeatureExtraction {
+private:
+    cv::HOGDescriptor hog_;  ///< HOG descriptor.
+    cv::Size win_size_;      ///< Window size for HOG computation.
+    cv::Size block_size_;    ///< Block size for HOG computation.
+    cv::Size block_stride_;  ///< Block stride for HOG computation.
+    cv::Size cell_size_;     ///< Cell size for HOG computation.
+    int nbins_;              ///< Number of bins for HOG computation.
+public:
+    /**
+     * @brief This class is used for extracting HOG features from images.
+     *
+     * HOGFeatureExtraction utilizes Histogram of Oriented Gradients (HOG) for
+     * feature extraction. It computes the HOG descriptor for the input image,
+     * which represents the distribution of gradient orientations in local
+     * regions of the image. The HOG features are useful for object detection,
+     * image classification, and other computer vision tasks.
+     *
+     * @param win_size Optional parameter specifying the window size for HOG
+     * computation. Default is cv::Size(64, 128). The window size determines the
+     * size of the detection window used for computing the HOG descriptor.
+     * @param block_size Optional parameter specifying the block size for HOG
+     * computation. Default is cv::Size(16, 16). The block size defines the
+     * spatial region over which the HOG descriptor is computed.
+     * @param block_stride Optional parameter specifying the block stride for
+     * HOG computation. Default is cv::Size(8, 8). The block stride determines
+     * the step size for moving the block window across the detection window.
+     * @param cell_size Optional parameter specifying the cell size for HOG
+     * computation. Default is cv::Size(8, 8). The cell size defines the size of
+     * the spatial bins used for computing the histogram of gradient
+     * orientations.
+     * @param nbins Optional parameter specifying the number of bins for HOG
+     * computation. Default is 9. The number of bins determines the granularity
+     * of the gradient orientation histogram.
+     */
+    HOGFeatureExtraction(const cv::Size win_size = cv::Size(160, 120),
+                         const cv::Size block_size = cv::Size(16, 16),
+                         const cv::Size block_stride = cv::Size(8, 8),
+                         const cv::Size cell_size = cv::Size(8, 8),
+                         const int nbins = 9)
+        : win_size_(win_size),
+          block_size_(block_size),
+          block_stride_(block_stride),
+          cell_size_(cell_size),
+          nbins_(nbins) {
+        hog_ = cv::HOGDescriptor(
+            win_size_, block_size_, block_stride_, cell_size_, nbins_);
+    }
+
+    /**
+     * @
+     * @brief Extracts HOG features from a single image.
+     *
+     * This method overrides the pure virtual method from the FeatureExtraction
+     * class. It computes the HOG descriptor for the given image.
+     *
+     * @param img The image from which features are to be extracted.
+     * @return An Eigen::VectorXd containing the extracted HOG features.
+     */
+    auto Extract(const cv::Mat &img) -> Eigen::VectorXd override;
+
+    /**
+     * @brief Extracts HOG features from a batch of images.
+     *
+     * This method implements efficient extraction of HOG features from multiple
+     * images. It is particularly useful for processing large datasets or
+     * real-time applications.
+     *
+     * @param data A vector of images from which features are to be extracted.
+     * @return An Eigen::MatrixXd where each row contains the HOG features
+     * extracted from one image.
+     */
+    auto BatchExtract(const std::vector<cv::Mat> &data)
+        -> Eigen::MatrixXd override;
+};
+
+class LBPFeatureExtraction : public FeatureExtraction {
+private:
+    int radius_;     ///< Radius for LBP computation.
+    int neighbors_;  ///< Number of neighbors for LBP computation.
+public:
+    /**
+     * @brief Constructs an LBPFeatureExtraction object with specified radius
+     * and number of neighbors.
+     *
+     * @param radius The radius parameter for LBP computation. Default is 1.
+     * @param neighbors The number of neighbors parameter for LBP computation.
+     * Default is 8.
+     */
+    LBPFeatureExtraction(int radius = 1, int neighbors = 8)
+        : radius_(radius), neighbors_(neighbors) {}
+
+    /**
+     * @brief Performs bilinear interpolation on an image at a given point.
+     *
+     * This function calculates the intensity value at a non-integer (x, y)
+     * position in an image using bilinear interpolation. Bilinear interpolation
+     * is a method of interpolating the value of a function on a rectilinear 2D
+     * grid for a non-grid point. It is based on linear interpolation first in
+     * one direction, and then again in the other direction.
+     *
+     * @param img The source image as a cv::Mat object. The image should be a
+     * single-channel (grayscale) image for the interpolation to work correctly.
+     * @param x The x-coordinate of the point where interpolation is desired.
+     * This is a floating-point value, and it does not need to be an integer.
+     * @param y The y-coordinate of the point where interpolation is desired.
+     * Similar to x, this is a floating-point value.
+     * @return The interpolated intensity value at the given (x, y) position.
+     * The return type is double, which allows for fractional intensity values.
+     */
+    inline static auto BilinearInterpolation(const cv::Mat &img,
+                                             double x,
+                                             double y) -> double {
+        int x1 = static_cast<int>(x), x2 = x1 + 1;
+        int y1 = static_cast<int>(y), y2 = y1 + 1;
+        double dx = x - x1, dy = y - y1;
+        return (1 - dx) * (1 - dy) * img.at<uchar>(y1, x1) +
+               dx * (1 - dy) * img.at<uchar>(y1, x2) +
+               (1 - dx) * dy * img.at<uchar>(y2, x1) +
+               dx * dy * img.at<uchar>(y2, x2);
+    }
+
+    /**
+     * @brief Extracts LBP features from a single image.
+     *
+     * This method overrides the pure virtual method from the FeatureExtraction
+     * class. It computes the LBP for the given image.
+     *
+     * @param img The image from which features are to be extracted.
+     * @return An Eigen::VectorXd containing the extracted LBP features.
+     */
+    auto Extract(const cv::Mat &img) -> Eigen::VectorXd override;
+
+    /**
+     * @brief Extracts LBP features from a batch of images.
+     *
+     * This method implements efficient extraction of LBP features from multiple
+     * images. It is particularly useful for processing large datasets or
+     * real-time applications.
+     *
+     * @param data A vector of images from which features are to be extracted.
+     * @return An Eigen::MatrixXd where each row contains the LBP features
+     * extracted from one image.
+     */
+    auto BatchExtract(const std::vector<cv::Mat> &data)
+        -> Eigen::MatrixXd override;
+};
 #endif  // FEATURE_EXTRACTION_H
