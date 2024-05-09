@@ -1,7 +1,7 @@
 #include <chrono>
-#include <iostream>
 #include <memory>
 #include <opencv2/opencv.hpp>
+#include <print>
 #include <string>
 #include <vector>
 
@@ -36,12 +36,11 @@ int main() {
          test_data = classifier.Preprocess(test_imgs);
     classifier.Train(train_data, train_label);
     auto predict = classifier.Predict(test_data);
-    std::cout << "Accuracy: " << CalcAccuracy(predict, test_label) << std::endl;
+    std::print("Accuracy: {}\n", CalcAccuracy(predict, test_label));
     auto end = std::chrono::high_resolution_clock::now();
-    std::cout << "Time: "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(end -
-                                                                       start)
-                     .count()
-              << "ms" << std::endl;
+    std::print(
+        "Time: {}ms\n",
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+            .count());
     return 0;
 }

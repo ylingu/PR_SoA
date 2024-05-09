@@ -46,11 +46,11 @@ public:
      */
     BayesClassifier(
         const int class_num,
-        std::unique_ptr<Normalization> normalize_strategy_ = nullptr,
+        std::unique_ptr<Normalization> normalize_strategy = nullptr,
         std::unique_ptr<FeatureExtraction> feature_extractor =
             std::make_unique<GLCMFeatureExtraction>())
         : class_num_(class_num),
-          normalize_strategy_(std::move(normalize_strategy_)),
+          normalize_strategy_(std::move(normalize_strategy)),
           feature_extractor_(std::move(feature_extractor)) {}
 
     /**

@@ -1,5 +1,6 @@
 #include <memory>
 #include <opencv2/opencv.hpp>
+#include <print>
 #include <string>
 #include <vector>
 
@@ -54,8 +55,7 @@ int main() {
         auto accuracy = CalcAccuracy(predict, test_label);
         csv.InsertRow(csv.GetRowCount(),
                       {std::to_string(i), std::to_string(accuracy * 100)});
-        std::cout << std::format(
-            "PCA dims: {}, Accuracy: {:.2f}%\n", i, accuracy * 100);
+        std::print("PCA dims: {}, Accuracy: {:.2f}%\n", i, accuracy * 100);
     }
     csv.Save("exp3.csv");
     return 0;

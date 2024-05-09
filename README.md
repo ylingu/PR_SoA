@@ -14,7 +14,7 @@
 
 推荐环境：
 
-- gcc 13.2.0+
+- gcc 14.1.1+
 - xmake 2.9.1+
 
 关于xmake的安装请参考[官方文档](https://xmake.io/#/zh-cn/guide/installation)
@@ -30,18 +30,12 @@ git clone https://github.com/ylingu/PatternRecognition_SoA.git
 cd PatternRecognition_SoA
 ```
 
-安装依赖
-
-```bash
-xmake install
-```
-
 ### <a name="2"></a>2. 使用
 
 运行实验代码
 
 ```bash
-xmake build exp1
+xmake
 xmake run exp1
 ```
 

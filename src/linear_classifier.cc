@@ -1,7 +1,8 @@
 #include "linear_classifier.h"
 
 #include <Eigen/Dense>
-#include <iostream>
+#include <print>
+#include <stdexcept>
 
 void VerticalBisectorClassifier::Train(const Eigen::MatrixXd &x_1,
                                        const Eigen::MatrixXd &x_2) {
@@ -39,8 +40,7 @@ Eigen::VectorXd Fisher(const Eigen::MatrixXd &x_1, const Eigen::MatrixXd &x_2) {
     Eigen::MatrixXd s_w = s_1 + s_2;
     // 检查S_w是否可逆
     if (s_w.determinant() == 0) {
-        std::cerr << "S_w is singular!" << std::endl;
-        return Eigen::VectorXd();
+        throw std::runtime_error("S_w is singular!");  // 抛出运行时错误异常
     }
     return s_w.inverse() * (m_1 - m_2);
 }
@@ -120,7 +120,7 @@ void LinearClassifier::Train(const Eigen::MatrixXd &x_1,
         a_ += learning_rate * x;
         // 调用准则函数
         double loss = (*c_)(a_, y);
-        std::cout << "Epoch " << i + 1 << " Loss: " << loss << std::endl;
+        std::print("Epoch: {} Loss: {}\n",i + 1, loss);
     }
 }
 
