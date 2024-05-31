@@ -13,7 +13,7 @@ auto LinearNormalization::Normalize(const Eigen::MatrixXd &features)
         parametersInitialized_ = true;
     }
     return (features.rowwise() - min_.transpose()).array().rowwise() /
-           (max_ - min_).transpose().array();
+           ((max_ - min_).transpose().array() + 1e-7);
 }
 
 auto ZScoreStandardization::Normalize(const Eigen::MatrixXd &features)

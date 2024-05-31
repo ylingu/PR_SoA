@@ -6,6 +6,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "feature_extraction.h"
+#include "utils.h"
 
 /**
  * @class Clustering
@@ -14,7 +15,9 @@
 class Clustering {
 private:
     std::unique_ptr<FeatureExtraction>
-        feature_extractor_;     ///< Feature extractor
+        feature_extractor_;  ///< Feature extractor
+    std::unique_ptr<Normalization>
+        normalize_strategy_;    ///< Strategy for data normalization.
     cv::Mat pca_eigen_vector_;  ///< PCA eigen vector
 
 public:
@@ -22,9 +25,13 @@ public:
      * @brief Construct a new Clustering object
      *
      * @param feature_extractor Unique pointer to the feature extractor
+     * @param normalize_strategy Unique pointer to a Normalization strategy
+     * object. If nullptr, no normalization is applied (default is nullptr).
      */
-    Clustering(std::unique_ptr<FeatureExtraction> feature_extractor)
-        : feature_extractor_(std::move(feature_extractor)) {}
+    Clustering(std::unique_ptr<FeatureExtraction> feature_extractor,
+               std::unique_ptr<Normalization> normalize_strategy = nullptr)
+        : feature_extractor_(std::move(feature_extractor)),
+          normalize_strategy_(std::move(normalize_strategy)) {}
 
     /**
      * @brief Preprocess the data
@@ -68,15 +75,20 @@ public:
      * @param feature_extractor Unique pointer to the feature extractor
      * @param k Number of clusters
      * @param term_criteria Termination criteria
+     * @param normalize_strategy Unique pointer to a Normalization strategy
+     * object. If nullptr, no normalization is applied (default is nullptr).
      * @param attempts Number of attempts
      * @param flags Flags (default is cv::KMEANS_PP_CENTERS)
      */
-    KmeansClustering(std::unique_ptr<FeatureExtraction> feature_extractor,
-                     int k,
-                     cv::TermCriteria term_criteria,
-                     int attempts = 3,
-                     int flags = cv::KMEANS_PP_CENTERS)
-        : Clustering(std::move(feature_extractor)),
+    KmeansClustering(
+        std::unique_ptr<FeatureExtraction> feature_extractor,
+        int k,
+        cv::TermCriteria term_criteria,
+        std::unique_ptr<Normalization> normalize_strategy = nullptr,
+        int attempts = 3,
+        int flags = cv::KMEANS_PP_CENTERS)
+        : Clustering(std::move(feature_extractor),
+                     std::move(normalize_strategy)),
           k_(k),
           term_criteria_(term_criteria),
           attempts_(attempts),
@@ -115,11 +127,16 @@ public:
      * @param feature_extractor Unique pointer to the feature extractor
      * @param eps Epsilon
      * @param min_samples Minimum number of samples
+     * @param normalize_strategy Unique pointer to a Normalization strategy
+     * object. If nullptr, no normalization is applied (default is nullptr).
      */
-    DbscanClustering(std::unique_ptr<FeatureExtraction> feature_extractor,
-                     double eps,
-                     int min_samples)
-        : Clustering(std::move(feature_extractor)),
+    DbscanClustering(
+        std::unique_ptr<FeatureExtraction> feature_extractor,
+        double eps,
+        int min_samples,
+        std::unique_ptr<Normalization> normalize_strategy = nullptr)
+        : Clustering(std::move(feature_extractor),
+                     std::move(normalize_strategy)),
           eps_(eps),
           min_samples_(min_samples) {}
 

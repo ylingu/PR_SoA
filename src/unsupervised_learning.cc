@@ -1,12 +1,14 @@
 #include "unsupervised_learning.h"
-#include <Eigen/src/Core/Matrix.h>
 
 #include <opencv2/core/eigen.hpp>
-#include <opencv2/core/operations.hpp>
+
 
 auto Clustering::Preprocess(const std::vector<cv::Mat> &data,
                             const int pca_dims) -> Eigen::MatrixXd {
     auto features = feature_extractor_->BatchExtract(data);
+    if (normalize_strategy_ != nullptr) {
+        features = normalize_strategy_->Normalize(features);
+    }
     if (pca_dims) {
         cv::Mat pca_data;
         cv::eigen2cv(features, pca_data);

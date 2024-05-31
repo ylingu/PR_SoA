@@ -64,12 +64,27 @@ public:
 
 /**
  * @brief Calculate the accuracy of the prediction.
- * @param predict The predicted labels.
- * @param label The true labels.
- * @return The accuracy.
+ *
+ * @param predict A vector of integers representing the predicted labels.
+ * @param label A vector of integers representing the true labels.
+ * @return double The accuracy of the prediction, ranging from 0 to 1.
  */
 auto CalcAccuracy(const std::vector<int> &predict,
                   const std::vector<int> &label) -> double;
+
+/**
+ * @brief Calculate the accuracy of the prediction.
+ *
+ * @param predict An Eigen Tensor containing the predicted labels.
+ * @param label A vector of integers representing the true labels.
+ * @return double The accuracy of the prediction, ranging from 0 to 1.
+ */
+inline auto CalcAccuracy(const Eigen::Tensor<long, 1> &predict,
+                         const std::vector<int> &label) -> double {
+    return CalcAccuracy(
+        std::vector<int>(predict.data(), predict.data() + predict.size()),
+        label);
+}
 
 /**
  * @brief Creates an array of dimension pairs for Eigen tensor contraction
@@ -111,7 +126,7 @@ auto Broadcast(const Derived &x,
         std::copy_n(x.dimensions().begin(), 1, cast.end() - 2);
         Eigen::Tensor<typename Derived::Scalar, N> x_reshaped = x.reshape(cast);
         std::copy_n(dims.begin(), N, cast.begin());
-        cast[N - 2] = x.dimension(0);
+        cast[N - 2] = 1;
         return x_reshaped.broadcast(cast);
     }
     std::copy_n(

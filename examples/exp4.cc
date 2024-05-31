@@ -7,6 +7,7 @@
 
 #include "feature_extraction.h"
 #include "unsupervised_learning.h"
+#include "utils.h"
 
 int main() {
     std::vector<cv::Mat> imgs;
@@ -29,7 +30,7 @@ int main() {
                                   7 * CV_PI / 8};
     std::vector<double> lambdas = {2, pow(2, 1.5), 4, pow(2, 2.5), 8};
     KmeansClustering clustering(
-        std::make_unique<GaborFeatureExtraction>(thetas, lambdas),
+        std::make_unique<HOGFeatureExtraction>(),
         20,
         cv::TermCriteria(
             cv::TermCriteria::EPS + cv::TermCriteria::COUNT, 1000, 0.5));
@@ -41,7 +42,7 @@ int main() {
     auto labels = clustering.Cluster(data);
     for (int i = 0; i != 20; ++i) {
         for (int j = 0; j != 20; ++j) {
-            std::print("{} ", labels[i * 20 + j]);
+            std::print("{},", labels[i * 20 + j]);
         }
         std::print("\n");
     }
