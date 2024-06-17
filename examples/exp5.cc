@@ -1,5 +1,4 @@
 #include <opencv2/opencv.hpp>
-#include <print>
 #include <vector>
 
 #include "csv.h"
@@ -67,18 +66,18 @@ int main() {
             test_label.push_back(i - 1);
         }
     }
-    BaseMLP mlp(16, 80, 20);
+    BaseMLP mlp(16, 15, 20);
     auto train_data = mlp.Preprocess(train_imgs);
     auto test_data = mlp.Preprocess(test_imgs);
     auto train_label_tensor = Eigen::TensorMap<Eigen::Tensor<int, 1>>(
         train_label.data(), train_label.size());
 
     auto loss = nn::CrossEntropyLoss<Tensor>();
-    auto optimizer = optim::SGD(0.01);
+    auto optimizer = optim::SGD(0.1);
     std::vector<std::vector<std::string>> data{
         {"epoch", "train loss", "train accuracy", "test accuracy"}};
     CSV csv(data);
-    for (int i = 0; i <= 150000; ++i) {
+    for (int i = 0; i <= 24000; ++i) {
         auto loss_val =
             mlp.TrainEpoch(train_data, train_label_tensor, loss, optimizer);
         if (i % 100 == 0)
