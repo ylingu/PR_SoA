@@ -48,7 +48,6 @@ private:
     Tensor zeros_;
 
 public:
-    using type = Tensor;
     auto Forward(const Tensor &x) -> Tensor {
         zeros_ = x.constant(0);
         mask_ = x <= zeros_;
@@ -66,7 +65,6 @@ private:
     Tensor out_;
 
 public:
-    using type = Tensor;
     auto Forward(const Tensor &x) -> Tensor {
         out_ = 1 / (1 + (-x).exp());
         return out_;
@@ -80,13 +78,12 @@ public:
 template <EigenTensor Tensor>
 class Flatten : public Module<Flatten<Tensor>> {
 private:
-    Eigen::array<int, Tensor::NumIndices> dims_;
+    Eigen::array<long, Tensor::NumIndices> dims_;
 
 public:
-    using type = Tensor;
     auto Forward(const Tensor &x) -> Eigen::Tensor<typename Tensor::Scalar, 2> {
         dims_ = x.dimensions();
-        return x.reshape(Eigen::array<int, 2>{dims_[0], x.size() / dims_[0]});
+        return x.reshape(Eigen::array<long, 2>{dims_[0], x.size() / dims_[0]});
     }
     auto Backward(const Eigen::Tensor<typename Tensor::Scalar, 2> &dout)
         -> Tensor {
@@ -105,7 +102,6 @@ private:
     Tensor x_;
 
 public:
-    using type = Tensor;
     Linear(int in_features, int out_features)
         : w_(in_features, out_features),
           b_(out_features),
@@ -122,10 +118,10 @@ public:
         return contracted + Broadcast(b_, x.dimensions());
     }
     auto Backward(const Tensor &dout) -> Tensor {
-        decltype(w_) dout_flat = dout.reshape(Eigen::array<int, 2>{
+        decltype(w_) dout_flat = dout.reshape(Eigen::array<long, 2>{
                          dout.size() / dout.dimension(dout.NumIndices - 1),
                          dout.dimension(dout.NumIndices - 1)}),
-                     x_flat = x_.reshape(Eigen::array<int, 2>{
+                     x_flat = x_.reshape(Eigen::array<long, 2>{
                          x_.size() / x_.dimension(x_.NumIndices - 1),
                          x_.dimension(x_.NumIndices - 1)});
         dw_ = x_flat.contract(dout_flat, ProdDims(0, 0));
@@ -188,46 +184,32 @@ template <typename... Modules>
     requires(std::conjunction_v<std::is_base_of<Module<Modules>, Modules>...>)
 class Sequential {
 private:
-    template <size_t I>
-    using Tensor =
-        typename std::tuple_element_t<I, std::tuple<Modules...>>::type;
-    template <size_t... Is>
-    auto ForwardImpl(const Tensor<0> &x, std::index_sequence<Is...>) const
-        -> Tensor<sizeof...(Modules) - 1> {
-        std::any y = x;
-        ((y = std::get<Is>(modules_)->Forward(std::any_cast<Tensor<Is>>(y))),
-         ...);
-        return std::any_cast<Tensor<sizeof...(Modules) - 1>>(y);
+    template <auto N>
+    auto ForwardImpl(const auto &x) const {
+        if constexpr (N) {
+            return std::get<N - 1>(modules_)->Forward(ForwardImpl<N - 1>(x));
+        } else {
+            return x;
+        }
     }
-    template <size_t... Is>
-    auto BackwardImpl(const Tensor<sizeof...(Modules) - 1> &dout,
-                      std::index_sequence<Is...>) const -> void {
-        std::any d = dout;
-        ((d =
-              [module =
-                   std::ref(std::get<sizeof...(Modules) - 1 - Is>(modules_)),
-               &d]() {
-                  using OutputType = decltype(module.get()->Forward(
-                      std::declval<Tensor<sizeof...(Modules) - 1 - Is>>()));
-                  return module.get()->Backward(std::any_cast<OutputType>(d));
-              }()),
-         ...);
+    template <auto N>
+    auto BackwardImpl(const auto &dout) const {
+        if constexpr (N) {
+            BackwardImpl<N - 1>(std::get<N - 1>(modules_)->Backward(dout));
+        }
     }
-    template <size_t... Is>
-    auto ToStringImpl(std::index_sequence<Is...>) const -> std::string {
-        std::vector<std::string> parts = {
-            std::format("({}): {}", Is, std::get<Is>(modules_)->ToString())...};
-        return "Sequential(\n" +
-               std::accumulate(parts.begin(),
-                               parts.end(),
-                               std::string(),
-                               [](const std::string &a, const std::string &b) {
-                                   return a + (a.length() > 0 ? ",\n" : "") + b;
-                               }) +
-               "\n)\n";
+    template <auto N>
+    auto ToStringImpl() const {
+        if constexpr (N) {
+            return std::format("{}  ({}): {}\n",
+                               ToStringImpl<N - 1>(),
+                               N - 1,
+                               std::get<N - 1>(modules_)->ToString());
+        }
+        return std::string();
     }
     template <size_t I>
-    auto GetParams(auto params) const {
+    auto GetParams(const auto &params) const {
         if constexpr (I < sizeof...(Modules)) {
             auto module = std::ref(std::get<I>(modules_));
             if constexpr (HasParams<decltype(*(module.get()))>) {
@@ -241,7 +223,7 @@ private:
         }
     }
     template <size_t I>
-    auto GetGrads(auto grads) const {
+    auto GetGrads(const auto &grads) const {
         if constexpr (I < sizeof...(Modules)) {
             auto module = std::ref(std::get<I>(modules_));
             if constexpr (HasGrads<decltype(*(module.get()))>) {
@@ -264,11 +246,11 @@ public:
           params_(this->GetParams<0>(std::tuple<>())),
           grads_(this->GetGrads<0>(std::tuple<>())) {}
 
-    auto Forward(const Tensor<0> &x) const -> Tensor<sizeof...(Modules) - 1> {
-        return ForwardImpl(x, std::make_index_sequence<sizeof...(Modules)>{});
+    auto Forward(const auto &x) const {
+        return ForwardImpl<sizeof...(Modules)>(x);
     }
-    auto Backward(const Tensor<sizeof...(Modules) - 1> &dout) const -> void {
-        BackwardImpl(dout, std::make_index_sequence<sizeof...(Modules)>{});
+    auto Backward(const auto &dout) const -> void {
+        BackwardImpl<sizeof...(Modules)>(dout);
     }
     template <Optimizer Optimizer>
     auto Step(Optimizer &optimizer) const -> void {
@@ -279,7 +261,7 @@ public:
                 &grads_));
     }
     auto ToString() const -> std::string {
-        return ToStringImpl(std::make_index_sequence<sizeof...(Modules)>{});
+        return "Sequential(\n" + ToStringImpl<sizeof...(Modules)>() + ")\n";
     }
 };
 }  // namespace nn
