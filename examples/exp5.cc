@@ -9,13 +9,13 @@
 using Tensor = Eigen::Tensor<float, 2>;
 class BaseMLP {
 private:
-    nn::Sequential<nn::Linear<Tensor>, nn::Relu<Tensor>, nn::Linear<Tensor>>
+    nn::Sequential<nn::Linear<Tensor>, nn::ReLU<Tensor>, nn::Linear<Tensor>>
         model_;
 
 public:
     BaseMLP(int input_size, int hidden_size, int output_size)
         : model_(nn::Linear<Tensor>(input_size, hidden_size),
-                 nn::Relu<Tensor>(),
+                 nn::ReLU<Tensor>(),
                  nn::Linear<Tensor>(hidden_size, output_size)) {}
     auto Preprocess(const std::vector<cv::Mat> &data)
         -> Eigen::Tensor<float, 2> {
@@ -29,7 +29,7 @@ public:
     auto TrainEpoch(const Eigen::Tensor<float, 2> &train_data,
                     const Eigen::Tensor<int, 1> &train_label,
                     nn::CrossEntropyLoss<Tensor> &loss,
-                    const optim::SGD &optimizer) -> float {
+                    optim::Adam &optimizer) -> float {
         auto output = model_.Forward(train_data);
         auto loss_val = loss.Forward(output, train_label);
         auto grad = loss.Backward();
@@ -73,11 +73,11 @@ int main() {
         train_label.data(), train_label.size());
 
     auto loss = nn::CrossEntropyLoss<Tensor>();
-    auto optimizer = optim::SGD(0.1);
+    auto optimizer = optim::Adam(0.01);
     std::vector<std::vector<std::string>> data{
         {"epoch", "train loss", "train accuracy", "test accuracy"}};
     CSV csv(data);
-    for (int i = 0; i <= 24000; ++i) {
+    for (int i = 0; i <= 3000; ++i) {
         auto loss_val =
             mlp.TrainEpoch(train_data, train_label_tensor, loss, optimizer);
         if (i % 100 == 0)

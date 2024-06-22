@@ -2,6 +2,8 @@
 #define LAYERS_H
 
 #include <any>
+#include <print>
+#include <tuple>
 #include <unsupported/Eigen/CXX11/Tensor>
 #include <variant>
 
@@ -9,6 +11,18 @@
 #include "utils.h"
 
 namespace nn {
+
+template <typename T>
+concept Optimizer = std::is_base_of_v<optim::Optimizer<T>, T>;
+
+template <typename T>
+concept HasParams = requires(T t) { t.Params(); };
+
+template <typename T>
+concept HasGrads = requires(T t) { t.Grads(); };
+
+template <typename T>
+concept Formattable = requires(T t) { t.ToString(); };
 
 template <typename Derived>
 class Module {
@@ -22,10 +36,13 @@ public:
     auto Backward(const Tensor &dout) -> Tensor {
         return static_cast<Derived *>(this)->Backward(dout);
     }
+    auto ToString() const -> std::string {
+        return static_cast<Derived *>(this)->ToString();
+    }
 };
 
 template <EigenTensor Tensor>
-class Relu : public Module<Relu<Tensor>> {
+class ReLU : public Module<ReLU<Tensor>> {
 private:
     Eigen::Tensor<bool, Tensor::NumIndices> mask_;
     Tensor zeros_;
@@ -40,6 +57,7 @@ public:
     auto Backward(const Tensor &dout) -> Tensor {
         return mask_.select(zeros_, dout);
     }
+    auto ToString() const -> std::string { return "ReLU()"; }
 };
 
 template <EigenTensor Tensor>
@@ -56,6 +74,7 @@ public:
     auto Backward(const Tensor &dout) -> Tensor {
         return out_ * (1 - out_) * dout;
     }
+    auto ToString() const -> std::string { return "Sigmoid()"; }
 };
 
 template <EigenTensor Tensor>
@@ -73,10 +92,10 @@ public:
         -> Tensor {
         return dout.reshape(dims_);
     }
+    auto ToString() const -> std::string {
+        return "Flatten(start_dim=1, end_dim=-1)";
+    }
 };
-
-template <typename T>
-concept Optimizer = std::is_base_of_v<optim::Optimizer<T>, T>;
 
 template <EigenTensor Tensor>
 class Linear : public Module<Linear<Tensor>> {
@@ -113,10 +132,16 @@ public:
         db_ = dout_flat.sum(Eigen::array<int, 1>{0});
         return dout.contract(w_, ProdDims(dout.NumIndices - 1, 1));
     }
-    template <Optimizer OptType>
-    auto Update(const OptType &optimizer) -> void {
-        optimizer.Step(w_, dw_);
-        optimizer.Step(b_, db_);
+    auto Params() -> std::tuple<decltype(w_) &, decltype(b_) &> {
+        return {w_, b_};
+    }
+    auto Grads() -> std::tuple<decltype(dw_) &, decltype(db_) &> {
+        return {dw_, db_};
+    }
+    auto ToString() const -> std::string {
+        return std::format("Linear(in_features={}, out_features={}, bias=True)",
+                           w_.dimension(0),
+                           w_.dimension(1));
     }
 };
 
@@ -159,27 +184,24 @@ public:
     auto Backward() -> Tensor { return (y_ - t_) / y_.constant(batch_size); }
 };
 
-template <typename T>
-concept HasUpdate = requires(T t) { t.Update(std::declval<optim::SGD>()); };
-
 template <typename... Modules>
-    requires(std::is_base_of_v<Module<Modules>, Modules> && ...)
+    requires(std::conjunction_v<std::is_base_of<Module<Modules>, Modules>...>)
 class Sequential {
 private:
     template <size_t I>
     using Tensor =
         typename std::tuple_element_t<I, std::tuple<Modules...>>::type;
-    template <std::size_t... Is>
-    auto ForwardImpl(const Tensor<0> &x, std::index_sequence<Is...>)
+    template <size_t... Is>
+    auto ForwardImpl(const Tensor<0> &x, std::index_sequence<Is...>) const
         -> Tensor<sizeof...(Modules) - 1> {
         std::any y = x;
         ((y = std::get<Is>(modules_)->Forward(std::any_cast<Tensor<Is>>(y))),
          ...);
         return std::any_cast<Tensor<sizeof...(Modules) - 1>>(y);
     }
-    template <std::size_t... Is>
+    template <size_t... Is>
     auto BackwardImpl(const Tensor<sizeof...(Modules) - 1> &dout,
-                      std::index_sequence<Is...>) -> void {
+                      std::index_sequence<Is...>) const -> void {
         std::any d = dout;
         ((d =
               [module =
@@ -191,36 +213,87 @@ private:
               }()),
          ...);
     }
-    template <Optimizer OptType, std::size_t... Is>
-    auto StepImpl(const OptType &optimizer,
-                  std::index_sequence<Is...>) -> void {
-        (([module = std::ref(std::get<sizeof...(Modules) - 1 - Is>(modules_)),
-           &optimizer]() {
-             if constexpr (HasUpdate<decltype(*(module.get()))>) {
-                 module.get()->Update(optimizer);
-             }
-         }()),
-         ...);
+    template <size_t... Is>
+    auto ToStringImpl(std::index_sequence<Is...>) const -> std::string {
+        std::vector<std::string> parts = {
+            std::format("({}): {}", Is, std::get<Is>(modules_)->ToString())...};
+        return "Sequential(\n" +
+               std::accumulate(parts.begin(),
+                               parts.end(),
+                               std::string(),
+                               [](const std::string &a, const std::string &b) {
+                                   return a + (a.length() > 0 ? ",\n" : "") + b;
+                               }) +
+               "\n)\n";
     }
-
+    template <size_t I>
+    auto GetParams(auto params) const {
+        if constexpr (I < sizeof...(Modules)) {
+            auto module = std::ref(std::get<I>(modules_));
+            if constexpr (HasParams<decltype(*(module.get()))>) {
+                return GetParams<I + 1>(
+                    std::tuple_cat(params, module.get()->Params()));
+            } else {
+                return GetParams<I + 1>(params);
+            }
+        } else {
+            return params;
+        }
+    }
+    template <size_t I>
+    auto GetGrads(auto grads) const {
+        if constexpr (I < sizeof...(Modules)) {
+            auto module = std::ref(std::get<I>(modules_));
+            if constexpr (HasGrads<decltype(*(module.get()))>) {
+                return GetGrads<I + 1>(
+                    std::tuple_cat(grads, module.get()->Grads()));
+            } else {
+                return GetGrads<I + 1>(grads);
+            }
+        } else {
+            return grads;
+        }
+    }
     std::tuple<std::unique_ptr<Modules>...> modules_;
+    std::any params_, grads_;
 
 public:
     Sequential(Modules &&...modules)
-        : modules_{
-              std::make_unique<Modules>(std::forward<Modules>(modules))...} {}
+        : modules_{std::make_unique<Modules>(
+              std::forward<Modules>(modules))...},
+          params_(this->GetParams<0>(std::tuple<>())),
+          grads_(this->GetGrads<0>(std::tuple<>())) {}
 
-    auto Forward(const Tensor<0> &x) -> Tensor<sizeof...(Modules) - 1> {
+    auto Forward(const Tensor<0> &x) const -> Tensor<sizeof...(Modules) - 1> {
         return ForwardImpl(x, std::make_index_sequence<sizeof...(Modules)>{});
     }
-    auto Backward(const Tensor<sizeof...(Modules) - 1> &dout) -> void {
+    auto Backward(const Tensor<sizeof...(Modules) - 1> &dout) const -> void {
         BackwardImpl(dout, std::make_index_sequence<sizeof...(Modules)>{});
     }
     template <Optimizer Optimizer>
-    auto Step(const Optimizer &optimizer) -> void {
-        StepImpl(optimizer, std::make_index_sequence<sizeof...(Modules)>{});
+    auto Step(Optimizer &optimizer) const -> void {
+        optimizer.Step(
+            *std::any_cast<decltype(this->GetParams<0>(std::tuple<>{}))>(
+                &params_),
+            *std::any_cast<decltype(this->GetGrads<0>(std::tuple<>{}))>(
+                &grads_));
+    }
+    auto ToString() const -> std::string {
+        return ToStringImpl(std::make_index_sequence<sizeof...(Modules)>{});
     }
 };
 }  // namespace nn
 
+template <nn::Formattable T>
+struct std::formatter<T> {
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext &ctx) {
+        return ctx.begin();
+    }
+
+    template <typename FormatContext>
+    auto format(const T &f, FormatContext &ctx) const {
+        return format_to(ctx.out(), "{}", f.ToString());
+    }
+};
 #endif  // LAYERS_H
